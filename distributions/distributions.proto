@@ -1,0 +1,40 @@
+syntax = "proto3";
+
+option go_package = "github.com/grpc-demo-golang/distributions/distributions";
+option java_multiple_files = true;
+option java_package = "distributions";
+option java_outer_classname = "DistributionsProto";
+
+package distributions;
+
+// The distributions service definition.
+service Distributions {
+  // Responds with a service greeting
+  rpc GetVariantDistribution(DistributionRequest) returns (DistributionResponse) {}
+}
+
+// The request message containing user properties
+message DistributionRequest {
+  string user_id = 1;
+  string organization_id = 2;
+  optional double latitude = 3;
+  optional double longitude = 4;
+}
+
+// The response message containing the variant assignment
+message DistributionResponse {
+
+  message Variant {
+    string name = 1;
+
+    enum VariantType {
+      CONTROL = 0;
+      TREATMENT = 1;
+    }
+
+    VariantType type = 2;
+  }
+
+  Variant assigned_variant = 2;
+  bool excluded_from_experiment = 3;
+}
