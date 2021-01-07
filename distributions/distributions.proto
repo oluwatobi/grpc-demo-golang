@@ -1,8 +1,7 @@
 syntax = "proto3";
 
-option go_package = "github.com/grpc-demo-golang/distributions/distributions";
+option go_package = "github.com/oluwatobi/grpc-demo-golang/distributions";
 option java_multiple_files = true;
-option java_package = "distributions";
 option java_outer_classname = "DistributionsProto";
 
 package distributions;

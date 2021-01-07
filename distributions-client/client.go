@@ -2,44 +2,67 @@ package main
 
 import (
 	"context"
-	"fmt"
+	"os"
+	"time"
 
-	pb "distributions"
+	pb "github.com/oluwatobi/grpc-demo-golang/distributions"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
 )
 
 const (
-	address     = "localhost:50051"
-	defaultName = "world"
+	address     = "localhost:9000"
 )
 
 func main() {
+
+	log.SetOutput(os.Stdout)
+
 	// Set up a connection to the server.
 	conn, err := grpc.Dial(address, grpc.WithInsecure(), grpc.WithBlock())
 	if err != nil {
 		log.Fatalf("did not connect: %v", err)
 	}
 	defer conn.Close()
-	c := pb.NewDistributionsClient(conn)
 
 	// Contact the server and print out its response.
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
-	distributionRequest := DistributionRequest{
+	latitude := float64(12.3456789)
+	longitude := float64(98.7654321)
+	distributionRequestControl := pb.DistributionRequest{
 		ExperimentId:   "experiment-id",
-		UserId:         "EXCLUDED_USER_ID",
+		UserId:         "EXCLUDED-USER-ID",
 		OrganizationId: "organization-id",
-		Latitude:       float64(12.3456789),
-		Longitude:      float64(98.7654321),
+		Latitude:       &latitude,
+		Longitude:      &longitude,
 	}
-	r, err := c.GetVariantDistribution(ctx, &distributionRequest)
-	if err != nil {
-		log.Fatalf("could not greet: %v", err)
+	distributionRequestRandom := pb.DistributionRequest{
+		ExperimentId:   "experiment-id",
+		UserId:         "user-id",
+		OrganizationId: "organization-id",
+		Latitude:       &latitude,
+		Longitude:      &longitude,
 	}
-	log.WithFields(log.Fields{
-		"variantName":            r.GetAssignedVariant().GetName(),
-		"variantType":            r.GetAssignedVariant().GetType(),
-		"excludedFromExperiment": r.GetExcludedFromExperiment(),
-	}).Info("Response recieved.")
+	client := pb.NewDistributionsClient(conn)
+	control, err1 := client.GetVariantDistribution(ctx, &distributionRequestControl)
+	random, err2 := client.GetVariantDistribution(ctx, &distributionRequestRandom)
+	if err1 != nil {
+		log.Fatalf("Could not retrieve variant assignment: %v", err)
+	} else {
+		log.WithFields(log.Fields{
+			"variantName":            control.GetAssignedVariant().GetName(),
+			"variantType":            control.GetAssignedVariant().GetType(),
+			"excludedFromExperiment": control.GetExcludedFromExperiment(),
+		}).Info("Response recieved.")
+	}
+	if err2 != nil {
+		log.Fatalf("Could not retrieve variant assignment: %v", err)
+	} else {
+		log.WithFields(log.Fields{
+			"variantName":            random.GetAssignedVariant().GetName(),
+			"variantType":            random.GetAssignedVariant().GetType(),
+			"excludedFromExperiment": random.GetExcludedFromExperiment(),
+		}).Info("Response recieved.")
+	}
 }
