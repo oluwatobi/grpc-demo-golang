@@ -5,9 +5,10 @@ import (
 	"fmt"
 	"hash/fnv"
 	"net"
+	"os"
 	"strings"
 
-	pb "distributions"
+	pb "github.com/oluwatobi/grpc-demo-golang/distributions"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
 )
@@ -15,7 +16,7 @@ import (
 const (
 	NUMBER_OF_EXPERIMENTS = 2
 
-	port = ":50051"
+	port = ":9000"
 )
 
 // server is used to implement distributions.DistributionsServer.
@@ -27,15 +28,22 @@ func calculateDistributionBaseOnAttributes(
 	userId string,
 	organizationId string,
 	latitude float64,
-	longitude float64) (pb.DistributionResponse_Variant, excludedFromExperiment, error) {
-	compositeKey := fmt.Sprintf("%s|%s|%f|%f", userId, brandId, latitude, longitude)
+	longitude float64) (pb.DistributionResponse_Variant, bool, error) {
+	compositeKey := fmt.Sprintf("%s|%s|%f|%f", userId, organizationId, latitude, longitude)
 	h := fnv.New32a()
 	h.Write([]byte(compositeKey))
 	hashValue := h.Sum32()
 	assignmentIndex := hashValue % NUMBER_OF_EXPERIMENTS
-	var variant pb.Variant
-	var excludedFromExperiment bool
-	if assignmentIndex == 1 {
+	var variant pb.DistributionResponse_Variant
+	excludedFromExperiment := false
+
+	if strings.Compare(userId, "EXCLUDED-USER-ID") == 0 {
+		variant = pb.DistributionResponse_Variant{
+			Name: "CONTROL",
+			Type: 0,
+		}
+		excludedFromExperiment = true
+	} else if assignmentIndex == 1 {
 		variant = pb.DistributionResponse_Variant{
 			Name: "CONTROL",
 			Type: 0,
@@ -47,17 +55,11 @@ func calculateDistributionBaseOnAttributes(
 		}
 	}
 
-	if strings.Compare(userId, "EXCLUDED_USERID") {
-		excludedFromExperiment = true
-	} else {
-		excludedFromExperiment = false
-	}
-
 	return variant, excludedFromExperiment, nil
 }
 
 // GetDistribution implements distributions.DistributionsServer
-func (s *server) GetDistribution(
+func (s *server) GetVariantDistribution(
 	ctx context.Context,
 	request *pb.DistributionRequest) (*pb.DistributionResponse, error) {
 	userId := request.GetUserId()
@@ -70,9 +72,9 @@ func (s *server) GetDistribution(
 		"organizationId": request.GetOrganizationId(),
 		"latitude":       request.GetLatitude(),
 		"longitude":      request.GetLongitude(),
-	}).Info("Request Recieved.")
+	}).Info("Request received.")
 
-	assignedVariant, excludedFromExperiment, error := calculateDistributionBaseOnAttributes(
+	assignedVariant, excludedFromExperiment, err := calculateDistributionBaseOnAttributes(
 		userId,
 		organizationId,
 		latitude,
@@ -84,12 +86,16 @@ func (s *server) GetDistribution(
 	}
 
 	return &pb.DistributionResponse{
-		AssignedVariant:        assignedVariant,
+		AssignedVariant:        &assignedVariant,
 		ExcludedFromExperiment: excludedFromExperiment,
 	}, nil
 }
 
 func main() {
+
+	log.SetOutput(os.Stdout)
+	log.Info("Server started.")
+
 	lis, err := net.Listen("tcp", port)
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)
