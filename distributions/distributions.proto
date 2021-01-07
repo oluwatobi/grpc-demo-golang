@@ -15,10 +15,11 @@ service Distributions {
 
 // The request message containing user properties
 message DistributionRequest {
-  string user_id = 1;
-  string organization_id = 2;
-  optional double latitude = 3;
-  optional double longitude = 4;
+  string experiment_id = 1;
+  string user_id = 2;
+  string organization_id = 3;
+  optional double latitude = 4;
+  optional double longitude = 5;
 }
 
 // The response message containing the variant assignment
